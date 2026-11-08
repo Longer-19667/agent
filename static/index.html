@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>校园生活助手 Agent</title>
+  <style>
+    :root {
+      --primary: #4f7cff;
+      --primary-dark: #3a63d8;
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #1f2430;
+      --muted: #8a92a6;
+      --border: #e6e9f0;
+      --bot-bubble: #ffffff;
+      --user-bubble: #4f7cff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* 顶部栏 */
+    header {
+      background: linear-gradient(135deg, #4f7cff, #6a5cff);
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(79, 124, 255, .25);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand .logo {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .brand h1 { font-size: 18px; font-weight: 600; }
+    .brand p { font-size: 12px; opacity: .85; margin-top: 2px; }
+    .kb-status {
+      background: rgba(255,255,255,.18);
+      padding: 6px 14px; border-radius: 20px;
+      font-size: 13px; display: flex; align-items: center; gap: 6px;
+    }
+    .kb-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #34d399; display: inline-block;
+    }
+    .kb-dot.empty { background: #fbbf24; }
+
+    /* 聊天区 */
+    main {
+      flex: 1; overflow-y: auto; padding: 24px;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .msg {
+      display: flex; gap: 10px; max-width: 82%;
+      animation: fadeIn .25s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to {opacity:1; transform:none;} }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 17px; background: #eef1ff; color: var(--primary);
+    }
+    .msg.user .avatar { background: var(--primary); color: #fff; }
+    .bubble {
+      padding: 12px 16px; border-radius: 14px;
+      background: var(--bot-bubble);
+      border: 1px solid var(--border);
+      line-height: 1.7; font-size: 15px;
+      white-space: pre-wrap; word-break: break-word;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .msg.user .bubble { background: var(--user-bubble); color: #fff; border: none; }
+    .bubble .src-tag {
+      display: block; font-size: 12px; color: var(--muted); margin-top: 8px;
+      padding-top: 8px; border-top: 1px dashed var(--border);
+    }
+    .msg.user .bubble .src-tag { color: rgba(255,255,255,.8); border-color: rgba(255,255,255,.3); }
+
+    /* 快捷提问 */
+    .quick {
+      display: flex; gap: 8px; flex-wrap: wrap; padding: 0 24px 8px;
+    }
+    .quick button {
+      border: 1px solid var(--border); background: #fff; color: var(--text);
+      padding: 7px 14px; border-radius: 18px; font-size: 13px; cursor: pointer;
+      transition: .15s;
+    }
+    .quick button:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    /* 底部输入 */
+    footer {
+      padding: 12px 24px 18px; background: var(--bg);
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .input-row {
+      display: flex; gap: 10px; align-items: flex-end;
+      background: #fff; border: 1px solid var(--border); border-radius: 14px;
+      padding: 8px 8px 8px 16px;
+    }
+    textarea {
+      flex: 1; border: none; outline: none; resize: none;
+      font-size: 15px; line-height: 1.6; font-family: inherit;
+      max-height: 120px; padding: 6px 0;
+    }
+    .send-btn {
+      background: var(--primary); color: #fff; border: none;
+      width: 40px; height: 40px; border-radius: 10px; cursor: pointer;
+      font-size: 18px; display: flex; align-items: center; justify-content: center;
+      transition: .15s;
+    }
+    .send-btn:hover { background: var(--primary-dark); }
+    .send-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .toolbar { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+    .upload-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      cursor: pointer; color: var(--primary); font-weight: 500;
+    }
+    .upload-btn input { display: none; }
+    .hint { font-size: 12px; color: var(--muted); }
+    /* 打字指示 */
+    .typing span { display: inline-block; width: 6px; height: 6px; background: #bbb; border-radius: 50%; margin: 0 2px; animation: blink 1.2s infinite; }
+    .typing span:nth-child(2){animation-delay:.2s;} .typing span:nth-child(3){animation-delay:.4s;}
+    @keyframes blink { 0%,80%,100%{opacity:.2;} 40%{opacity:1;} }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">🎓</div>
+      <div>
+        <h1>校园生活助手 Agent</h1>
+        <p>大学校园一站式服务智能体</p>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <div class="kb-status" id="llmStatus">
+        <span class="kb-dot" id="llmDot" style="background:#fbbf24;"></span>
+        <span id="llmText">检测中…</span>
+      </div>
+      <div class="kb-status" id="kbStatus">
+        <span class="kb-dot empty" id="kbDot"></span>
+        <span id="kbText">知识库未加载</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="chat"></main>
+
+  <div class="quick" id="quickBar">
+    <button onclick="quickAsk('食堂怎么充值校园卡？')">🍜 食堂充值</button>
+    <button onclick="quickAsk('宿舍东西坏了怎么报修？')">🔧 宿舍报修</button>
+    <button onclick="quickAsk('选课流程是什么？')">📚 选课</button>
+    <button onclick="quickAsk('奖学金怎么申请？')">💰 奖学金</button>
+    <button onclick="quickAsk('新生报到要准备什么？')">🏫 新生报到</button>
+  </div>
+
+  <footer>
+    <div class="toolbar">
+      <label class="upload-btn">
+        📄 上传规章制度文档
+        <input type="file" id="pdfInput" accept=".pdf,.doc,.docx,.txt">
+      </label>
+      <span class="hint" id="uploadHint">支持 PDF / Word / 文本，作为问答知识库</span>
+    </div>
+    <div class="input-row">
+      <textarea id="input" rows="1" placeholder="问我校园相关的问题，例如：怎么报修、奖学金怎么申请…"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="send()">➤</button>
+    </div>
+  </footer>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+
+    function addMsg(text, who, sources) {
+      const div = document.createElement('div');
+      div.className = 'msg ' + who;
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar';
+      avatar.textContent = who === 'user' ? '我' : '🎓';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = text;
+      if (sources && sources.length) {
+        const tag = document.createElement('span');
+        tag.className = 'src-tag';
+        tag.textContent = '📎 依据：' + sources.map(s => s.title).join('、');
+        bubble.appendChild(tag);
+      }
+      div.appendChild(avatar);
+      div.appendChild(bubble);
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+      return bubble;
+    }
+
+    function addTyping() {
+      const div = document.createElement('div');
+      div.className = 'msg bot';
+      div.id = 'typing';
+      const avatar = document.createElement('div');
+      avatar.className = 'avatar'; avatar.textContent = '🎓';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble typing';
+      bubble.innerHTML = '<span></span><span></span><span></span>';
+      div.appendChild(avatar); div.appendChild(bubble);
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+    function removeTyping() {
+      const t = document.getElementById('typing');
+      if (t) t.remove();
+    }
+
+    async function send(text) {
+      const q = (text ?? input.value).trim();
+      if (!q) return;
+      addMsg(q, 'user');
+      input.value = '';
+      autoResize();
+      addTyping();
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q })
+        });
+        const data = await res.json();
+        removeTyping();
+        if (data.error) {
+          addMsg('⚠️ ' + data.error, 'bot');
+        } else {
+          addMsg(data.text, 'bot', data.sources);
+        }
+      } catch (e) {
+        removeTyping();
+        addMsg('⚠️ 请求失败：' + e.message, 'bot');
+      }
+    }
+
+    function quickAsk(q) { send(q); }
+
+    // 输入框自适应高度
+    function autoResize() {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    }
+    input.addEventListener('input', autoResize);
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+
+    // PDF 上传
+    document.getElementById('pdfInput').addEventListener('change', async e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const hint = document.getElementById('uploadHint');
+      hint.textContent = '正在解析《' + file.name + '》…';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.ok) {
+          hint.textContent = '✅ 已加载《' + file.name + '》，切分 ' + data.chunk_count + ' 个知识块';
+          addMsg('已成功上传《' + file.name + '》并建立知识库，现在你可以针对这份文件里的内容提问了。', 'bot');
+        } else {
+          hint.textContent = '⚠️ ' + (data.error || '上传失败');
+        }
+      } catch (err) {
+        hint.textContent = '⚠️ 上传失败：' + err.message;
+      }
+      refreshKbStatus();
+      e.target.value = '';
+    });
+
+    async function refreshKbStatus() {
+      try {
+        const res = await fetch('/api/kb');
+        const data = await res.json();
+        const dot = document.getElementById('kbDot');
+        const txt = document.getElementById('kbText');
+        if (data.doc_count > 0) {
+          dot.classList.remove('empty');
+          txt.textContent = '知识库：' + data.doc_count + ' 份文档';
+        } else {
+          dot.classList.add('empty');
+          txt.textContent = '知识库未加载';
+        }
+      } catch (e) {}
+    }
+
+    async function refreshLlmStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        const dot = document.getElementById('llmDot');
+        const txt = document.getElementById('llmText');
+        if (data.llm_enabled) {
+          dot.style.background = '#34d399';
+          txt.textContent = 'AI：' + data.llm_model;
+        } else {
+          dot.style.background = '#fbbf24';
+          txt.textContent = '规则模式';
+        }
+      } catch (e) {
+        document.getElementById('llmText').textContent = '状态未知';
+      }
+    }
+
+    // 初始欢迎语
+    (function init() {
+      addMsg(
+        '你好，我是校园生活助手 🎓\n\n我可以帮你：\n① 问答校园制度（上传本校规章制度文档后即可基于文件作答）\n② 生成校园办事流程（选课、报修、食堂、奖学金、图书馆等）\n③ 根据你的需求给出行动建议\n\n你可以点下方快捷按钮，或直接输入问题试试～',
+        'bot'
+      );
+      refreshKbStatus();
+      refreshLlmStatus();
+    })();
+  </script>
+</body>
+</html>
